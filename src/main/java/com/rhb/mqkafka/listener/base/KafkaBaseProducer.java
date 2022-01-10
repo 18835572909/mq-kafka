@@ -2,7 +2,9 @@ package com.rhb.mqkafka.listener.base;
 
 import java.util.List;
 import javax.annotation.Resource;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -79,15 +81,24 @@ public class KafkaBaseProducer {
     kafkaTemplate.send(topic,message);
   }
 
-  public void sendWithTransaction(List<TopicMessage> list){
+  /**
+   * 事务提交
+   *
+   * @param topicMessages 主题 + 内容
+   */
+  public void sendWithTransaction(List<TopicMessage> topicMessages){
     kafkaTemplate.executeInTransaction(kafkaOperations -> {
-      ListenableFuture<SendResult<String, String>> send = kafkaOperations.send("", "");
-      return send;
+      topicMessages.forEach(x->{
+        kafkaOperations.send(x.getTopic(), x.getMessage());
+      });
+      throw new RuntimeException("kafka事务提交测试");
     });
   }
 
   @Data
-  public class TopicMessage{
+  @AllArgsConstructor
+  @NoArgsConstructor
+  public static class TopicMessage{
     private String topic;
     private String message;
   }

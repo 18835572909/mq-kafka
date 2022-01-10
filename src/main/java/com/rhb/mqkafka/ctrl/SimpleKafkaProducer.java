@@ -1,7 +1,8 @@
 package com.rhb.mqkafka.ctrl;
 
-import com.rhb.mqkafka.constant.SysConstant;
+import cn.hutool.core.collection.CollectionUtil;
 import com.rhb.mqkafka.listener.base.KafkaBaseProducer;
+import com.rhb.mqkafka.listener.base.KafkaBaseProducer.TopicMessage;
 import javax.annotation.Resource;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +32,11 @@ public class SimpleKafkaProducer {
   @GetMapping("/kafka/2/{topic}/{message}")
   public void sendAndCallBack(@PathVariable("topic")String topic,@PathVariable("message")String message){
     kafkaBaseProducer.sendAndCallBack_1(topic,message);
+  }
+
+  @GetMapping("/kafka/3/{topic}/{message}")
+  public void sendWithTransaction(@PathVariable("topic")String topic,@PathVariable("message")String message){
+    kafkaBaseProducer.sendWithTransaction(CollectionUtil.newArrayList(new TopicMessage(topic,message)));
   }
 
 }

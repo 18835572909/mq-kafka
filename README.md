@@ -1,5 +1,20 @@
 #  关注点
 * 发送消息设置回调函数
+```
+kafkaTemplate.send(topic,message)
+      .addCallback(
+          success->{
+            RecordMetadata recordMetadata = success.getRecordMetadata();
+            String topic2 = recordMetadata.topic();
+            long offset = recordMetadata.offset();
+            int partition = recordMetadata.partition();
+            System.out.println("kafka send success: "+topic2 + ","+partition+","+offset);
+          },
+          failure->{
+            Throwable cause = failure.getCause();
+            System.out.println("kafak send failure: "+topic+"("+cause.getMessage()+")");
+          });
+```
 * kafka支持的分片策略
 ```
 1. kafka默认策略：轮询
@@ -37,6 +52,52 @@ spring.kafka.consumer.max-poll-records=50
   })
   public void onMessage2(ConsumerRecord<String,String> record)
 ```
+* 事务提交
+```
+在使用kafka的事务过程中，遇到的异常提示，kafka的提示还是很清晰的
+1. Producer factory does not support transactions
+修改配置： spring.kafka.producer.transaction-id-prefix=tx-id  （这是开启事务的标志）  
+2. Must set retries to non-zero when using the idempotent producer.  
+修改配置： spring.kafka.producer.retries=1 （不要是0）
+3. Must set acks to all in order to use the idempotent producer. Otherwise we cannot guarantee idempotence.
+修改配置： spring.kafka.producer.acks=all （必须说所有ack都影响，才能保证冥等性）
+```
+* 消费者异常处理器 （不生效）
+
+* 消费者不消费： 一般情况是消费id重复
+
+* 消息过滤器（在消息到达消费者之前进行拦截过滤）
+```
+1. 定义拦截器：ConcurrentKafkaListenerContainerFactory
+2. 标签声明拦截器：@KafkaListener(id="simple",topics = {SysConstant.TEST_TOPIC_SINGLE_PARTITION},containerFactory = "filterContainerFactory")
+```
+
+* 消息转发
+```
+1. 添加@SendTo标签： 转发消费函数返回值
+  @KafkaListener(id="simple",topics = {SysConstant.TEST_TOPIC_SINGLE_PARTITION},containerFactory = "filterContainerFactory")
+  @SendTo(SysConstant.TOPIC_1001)
+  public String onMessage2(ConsumerRecord<String,String> record){
+    System.out.println("标签-简单消费："+record.topic()+"-"+record.partition()+"-"+record.offset()+"-"+record.value());
+    return "sendTo Message";
+  }
+2. a KafkaTemplate is required to support replies
+  原因：在定义过滤策略的时候，重新定义了ConcurrentKafkaListenerContainerFactory，但是没有设置factory.setReplyTemplate(kafkaTemplate);
+  解决：如果覆盖了SpringBoot的工厂来，设置setReplyTemplate值
+```
+
+* 消息调度消费
+```
+1. @KafkaListener注解所标注的方法并不会在IOC容器中被注册为Bean，而是会被注册在KafkaListenerEndpointRegistry中，而KafkaListenerEndpointRegistry在SpringIOC中已经被注册为Bean
+2. registry.getListenerContainer(LISTENER_CONTAINER_ID); 
+   LISTENER_CONTAINER_ID: 指的是  @KafkaListener(id = "cron") 标签的id值
+```
+
+
+### 剩余知识点
+
+* 重复消费问题
+* offset重置和当前值
 
 
 
